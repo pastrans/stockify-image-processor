@@ -1,0 +1,6 @@
+# Dependencias que se empaquetan en la Lambda.
+# boto3 NO va aquí: el runtime python3.12 de Lambda ya lo incluye (ver requirements-dev.txt).
+pillow
+numpy
+opencv-python-headless
+onnxruntime

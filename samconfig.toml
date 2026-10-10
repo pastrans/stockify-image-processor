@@ -1,0 +1,16 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "stockify-image-processor"
+region = "us-east-1"          # misma región que el bucket
+profile = "stockify"          # perfil de ~/.aws/credentials
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
+resolve_image_repos = true    # SAM crea el repositorio ECR para la imagen
+confirm_changeset = true
+parameter_overrides = "BucketName=stockify-media-storage-dev"
+
+[default.local_invoke.parameters]
+parameter_overrides = "BucketName=stockify-media-storage-dev"

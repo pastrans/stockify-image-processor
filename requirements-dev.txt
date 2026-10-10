@@ -1,0 +1,3 @@
+# Entorno local: dependencias de la Lambda + las que el runtime ya trae
+-r src/requirements.txt
+boto3

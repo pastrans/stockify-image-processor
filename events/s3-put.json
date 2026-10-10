@@ -1,0 +1,24 @@
+{
+  "version": "0",
+  "id": "00000000-0000-0000-0000-000000000000",
+  "detail-type": "Object Created",
+  "source": "aws.s3",
+  "account": "123456789012",
+  "time": "2026-01-01T00:00:00Z",
+  "region": "us-east-1",
+  "resources": ["arn:aws:s3:::stockify-media-storage-dev"],
+  "detail": {
+    "version": "0",
+    "bucket": { "name": "stockify-media-storage-dev" },
+    "object": {
+      "key": "tmp/prueba-local/original.jpg",
+      "size": 0,
+      "etag": "",
+      "sequencer": ""
+    },
+    "request-id": "",
+    "requester": "",
+    "source-ip-address": "",
+    "reason": "PutObject"
+  }
+}

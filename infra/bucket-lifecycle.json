@@ -1,0 +1,10 @@
+{
+  "Rules": [
+    {
+      "ID": "borrar-tmp-1-dia",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "tmp/" },
+      "Expiration": { "Days": 1 }
+    }
+  ]
+}

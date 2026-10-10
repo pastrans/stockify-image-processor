@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  stockify-image-processor: procesa las fotos subidas a tmp/{uuid}/original.* y
+  escribe tmp/{uuid}/processed.jpg o tmp/{uuid}/error.json.
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Bucket existente de Stockify (debe tener EventBridge activado)
+
+Resources:
+  ImageProcessorFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: ./src
+      DockerTag: python3.12-v1
+    Properties:
+      PackageType: Image
+      Architectures: [x86_64]
+      MemorySize: 2048
+      Timeout: 60
+      # Mínimo privilegio: solo leer y escribir dentro de tmp/
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource: !Sub arn:aws:s3:::${BucketName}/tmp/*
+      # Invocación asíncrona: sin reintentos (un timeout o falta de memoria no
+      # escriben error.json, pero reintentar tampoco lo arreglaría)
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+      Events:
+        OriginalUploaded:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source: [aws.s3]
+              detail-type: [Object Created]
+              detail:
+                bucket:
+                  name: [!Ref BucketName]
+                object:
+                  key:
+                    - wildcard: "tmp/*/original.*"
+
+  ImageProcessorLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ImageProcessorFunction}
+      RetentionInDays: 14
+
+Outputs:
+  FunctionName:
+    Value: !Ref ImageProcessorFunction
+  FunctionRoleArn:
+    Value: !GetAtt ImageProcessorFunctionRole.Arn
