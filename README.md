@@ -238,42 +238,155 @@ en **On**, y pestaña **Management** → *Lifecycle rules*.
 
 ## 6. Build, prueba y deploy
 
+### 6.1 Variables de la sesión
+
+Los comandos de esta sección usan dos variables de PowerShell. Defínelas al abrir la
+terminal (se pierden al cerrarla):
+
+```powershell
+$BUCKET = "stockify-media-storage-dev"
+$FILE_NAME = "152149"        # nombre de una foto de samples\ sin la extensión .jpg
+```
+
+Para probar otra foto, cambia solo `$FILE_NAME` y repite los comandos.
+
+### 6.2 Construir
+
 ```powershell
 sam validate --lint          # revisa template.yaml
 sam build                    # construye la imagen en Docker (la primera vez tarda unos minutos)
 ```
 
-**Opcional: probar la Lambda en Docker antes de desplegar.** Corre en tu PC pero usa el S3
-real con las credenciales de `stockify-deployer`:
+### 6.3 Probar la Lambda en Docker (opcional, antes de desplegar)
+
+Corre en tu PC, pero lee y escribe en el S3 real con las credenciales de `stockify-deployer`.
+El evento simulado (`events/s3-put.json`) siempre apunta a `tmp/prueba-local/original.jpg`,
+así que en S3 se usa esa carpeta y en local el resultado se guarda con el nombre de la foto:
 
 ```powershell
-aws s3 cp samples\foto.jpg s3://$BUCKET/tmp/prueba-local/original.jpg --profile stockify
+# 1. Subir la foto original
+aws s3 cp samples\$FILE_NAME.jpg s3://$BUCKET/tmp/prueba-local/original.jpg --profile stockify
+
+# 2. Ejecutar la Lambda en Docker con el evento simulado
 sam local invoke ImageProcessorFunction -e events/s3-put.json
-aws s3 ls s3://$BUCKET/tmp/prueba-local/ --profile stockify   # debe aparecer processed.jpg
-aws s3 cp s3://$BUCKET/tmp/prueba-local/processed.jpg out\processed.jpg --profile stockify
+
+# 3. Ver el resultado en S3: debe aparecer processed.jpg (o error.json si falló)
+aws s3 ls s3://$BUCKET/tmp/prueba-local/ --profile stockify
+
+# 4. Descargarlo a out\ con el nombre de la foto
+aws s3 cp s3://$BUCKET/tmp/prueba-local/processed.jpg out\$FILE_NAME-processed.jpg --profile stockify
 ```
 
-1. `aws s3 cp` copia una foto de tu PC (`samples\foto.jpg`) al bucket, en la ruta que
-   usaría el backend.
-2. `sam local invoke` ejecuta la Lambda dentro de Docker, pasándole `events/s3-put.json`:
-   un evento falso que imita el aviso de EventBridge y apunta a esa misma key.
-3. `aws s3 ls` lista la carpeta para ver si apareció `processed.jpg` o `error.json`.
-4. El último `aws s3 cp` (al revés) descarga el resultado a `out\` para verlo.
+- **Paso 1:** `aws s3 cp` copia la foto de tu PC al bucket, en la ruta que usaría el backend.
+- **Paso 2:** `sam local invoke` ejecuta la Lambda en Docker con un evento falso que imita el
+  aviso de EventBridge.
+- **Paso 4:** el mismo comando al revés descarga el resultado.
 
-Antes del primer deploy no se dispara nada en AWS al subir la foto: la única ejecución es
-la de `sam local invoke`.
+> Una vez desplegada, subir a `tmp/.../original.jpg` también dispara la Lambda real en AWS,
+> así que la foto se procesa dos veces. Para probar lo desplegado usa el apartado 6.5.
 
-**Desplegar.** SAM muestra los cambios y pide confirmación:
+### 6.4 Desplegar
+
+SAM muestra los cambios y pide confirmación:
 
 ```powershell
 sam deploy
 ```
 
-**Probar en AWS.** Sube una foto a `tmp/<cualquier-id>/original.jpg` y, en unos segundos,
-debe aparecer `processed.jpg` en la misma carpeta. Para ver los logs:
+### 6.5 Probar la Lambda desplegada
+
+Aquí no hace falta `sam local invoke`: al subir la foto, EventBridge dispara la Lambda en
+AWS. Cada foto va a su propia carpeta (`tmp/$FILE_NAME/`), así que no se pisan entre pruebas:
+
+```powershell
+# 1. Subir la foto: esto dispara la Lambda
+aws s3 cp samples\$FILE_NAME.jpg s3://$BUCKET/tmp/$FILE_NAME/original.jpg --profile stockify
+
+# 2. Esperar unos segundos y ver el resultado (la primera vez tarda más: cold start)
+aws s3 ls s3://$BUCKET/tmp/$FILE_NAME/ --profile stockify
+
+# 3. Descargarlo a out\
+aws s3 cp s3://$BUCKET/tmp/$FILE_NAME/processed.jpg out\$FILE_NAME-processed.jpg --profile stockify
+```
+
+Si no aparece `processed.jpg`, revisa los logs:
 
 ```powershell
 sam logs -n ImageProcessorFunction --stack-name stockify-image-processor --profile stockify --tail
 ```
 
+No hace falta borrar las pruebas: la regla de ciclo de vida limpia `tmp/` cada día.
+
 Para borrar todo lo desplegado: `sam delete`.
+
+---
+
+## 7. Costos y seguimiento del consumo
+
+### Qué cuesta este proyecto
+
+| Servicio | Cómo cobra | Estimación |
+|---|---|---|
+| Lambda | Por invocación y por GB-segundo (2 GB × ~3 s ≈ 6 GB-s por foto) | Prácticamente gratis: el nivel gratuito permanente cubre 400 000 GB-s al mes (unas 60 000 fotos) |
+| ECR | Almacenamiento de la imagen (~1,5 GB) | **El costo principal**: unos centavos de dólar al mes por cada imagen guardada. Cada `sam deploy` sube una nueva, por eso se limita a 3 (abajo) |
+| S3 | Almacenamiento y peticiones | Mínimo: `tmp/` se borra a diario |
+| EventBridge | Eventos de servicios de AWS al bus por defecto | Gratis |
+| CloudWatch Logs | Ingesta y almacenamiento de logs | Mínimo (retención de 14 días) |
+
+Los precios y el nivel gratuito dependen de la región y del tipo de cuenta: revisa
+**Billing → Free Tier** en la consola.
+
+### 1. Etiquetas (antes del primer deploy)
+
+`samconfig.toml` ya aplica las etiquetas `proyecto=stockify`, `componente=image-processor` y
+`entorno=dev` a todo lo que crea el stack. Para el bucket, que no lo creó SAM:
+
+```powershell
+# put-bucket-tagging REEMPLAZA todas las etiquetas: primero mira si ya tiene alguna
+aws s3api get-bucket-tagging --bucket $BUCKET --profile stockify
+aws s3api put-bucket-tagging --bucket $BUCKET --profile stockify `
+  --tagging 'TagSet=[{Key=proyecto,Value=stockify},{Key=entorno,Value=dev}]'
+```
+
+Si el `get` devuelve etiquetas, inclúyelas también en el `put`.
+
+### 2. Activar las etiquetas para facturación (una vez, con root)
+
+Por defecto los usuarios IAM no ven la facturación. Entra con el usuario root:
+
+1. **Billing and Cost Management → Cost allocation tags**: busca `proyecto`, `componente` y
+   `entorno` y pulsa **Activate**. Aparecen hasta 24 h después de crear los recursos
+   etiquetados, y solo cuentan a partir de su activación (no hacia atrás).
+2. *(Opcional)* **Account → IAM user and role access to Billing information → Activate**,
+   para poder consultar costos sin usar root.
+
+### 3. Presupuesto con alertas
+
+**Billing and Cost Management → Budgets → Create budget → Monthly cost budget**:
+
+- Importe: por ejemplo, 5 USD.
+- Filtro: etiqueta `proyecto = stockify` (o toda la cuenta).
+- Alertas por correo: al 80 % del gasto **real** y al 100 % del gasto **previsto**.
+
+Un presupuesto **no detiene** el gasto: solo avisa.
+
+### 4. Detección de anomalías
+
+**Billing and Cost Management → Cost Anomaly Detection**: crea un monitor por servicio con
+alerta por correo. Avisa si el gasto se dispara de forma inusual (por ejemplo, un bucle de
+invocaciones).
+
+### 5. Consultar el gasto
+
+**Cost Explorer** → *Group by*: **Tag → proyecto** (o **Service**). Los datos tardan unas
+24 h en aparecer.
+
+### 6. Limitar las imágenes guardadas en ECR (después del primer deploy)
+
+```powershell
+# Nombre del repositorio que creó SAM
+aws ecr describe-repositories --profile stockify --query "repositories[].repositoryName"
+
+aws ecr put-lifecycle-policy --profile stockify --repository-name NOMBRE-DEL-REPO `
+  --lifecycle-policy-text file://infra/ecr-lifecycle.json
+```

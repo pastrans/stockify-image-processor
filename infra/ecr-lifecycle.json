@@ -1,0 +1,14 @@
+{
+  "rules": [
+    {
+      "rulePriority": 1,
+      "description": "Conservar solo las 3 imagenes mas recientes",
+      "selection": {
+        "tagStatus": "any",
+        "countType": "imageCountMoreThan",
+        "countNumber": 3
+      },
+      "action": { "type": "expire" }
+    }
+  ]
+}

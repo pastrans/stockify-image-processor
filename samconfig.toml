@@ -11,6 +11,9 @@ resolve_s3 = true
 resolve_image_repos = true    # SAM crea el repositorio ECR para la imagen
 confirm_changeset = true
 parameter_overrides = "BucketName=stockify-media-storage-dev"
+# Etiquetas del stack: CloudFormation las propaga a la Lambda, su rol, la regla y los logs.
+# Activadas como "cost allocation tags" permiten ver el costo del proyecto en Cost Explorer.
+tags = "proyecto=stockify componente=image-processor entorno=dev"
 
 [default.local_invoke.parameters]
 parameter_overrides = "BucketName=stockify-media-storage-dev"
