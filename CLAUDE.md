@@ -87,6 +87,8 @@ samples/  out/              # fotos de prueba y resultados (en .gitignore)
 ## Estado
 Algoritmo v1 implementado y validado con 32 fotos (dos teléfonos, 9 colores de cartulina,
 paredes plateadas/negras/rosas, frasco transparente, objeto pequeño, botas). ~2.5 s por foto.
-Imagen de contenedor construida y probada en local; falta desplegar.
+Desplegado en AWS (us-east-1, stack stockify-image-processor) y probado de punta a punta.
+Lifecycle de ECR aplicado (3 imágenes). Pendiente: activar las cost allocation tags y el
+presupuesto en Billing. Siguiente fase: integración en el backend y el frontend (otros repos).
 Pendiente: restos leves de pared en algunas esquinas superiores (fotos con paredes plateadas
 de reflejo marrón/gris, p. ej. IMG_20261009_175412 y PXL_20261009_233402238).
