@@ -339,7 +339,9 @@ Los precios y el nivel gratuito dependen de la región y del tipo de cuenta: rev
 ### 1. Etiquetas (antes del primer deploy)
 
 `samconfig.toml` ya aplica las etiquetas `proyecto=stockify`, `componente=image-processor` y
-`entorno=dev` a todo lo que crea el stack. Para el bucket, que no lo creó SAM:
+`entorno=dev` a todo lo que crea el stack, salvo el repositorio de ECR (lo crea una stack
+auxiliar de SAM sin esas etiquetas: se etiqueta en el paso 6). Para el bucket, que no lo
+creó SAM:
 
 ```powershell
 # put-bucket-tagging REEMPLAZA todas las etiquetas: primero mira si ya tiene alguna
@@ -354,9 +356,19 @@ Si el `get` devuelve etiquetas, inclúyelas también en el `put`.
 
 Por defecto los usuarios IAM no ven la facturación. Entra con el usuario root:
 
-1. **Billing and Cost Management → Cost allocation tags**: busca `proyecto`, `componente` y
-   `entorno` y pulsa **Activate**. Aparecen hasta 24 h después de crear los recursos
-   etiquetados, y solo cuentan a partir de su activación (no hacia atrás).
+1. **Billing and Cost Management → Cost allocation tags** → pestaña **User-defined**: busca
+   `proyecto`, `componente` y `entorno` y pulsa **Activate**. No aparecen al etiquetar, sino
+   cuando la facturación registra uso de un recurso etiquetado (unas 24 h después). Como casi
+   todo entra en el nivel gratuito, lo primero que las hace aparecer es el almacenamiento
+   del repositorio de ECR: hasta etiquetarlo (paso 6) no salen. Solo cuentan a partir de su
+   activación (**Backfill tags** recupera hasta 12 meses atrás). Para revisarlas desde
+   **CloudShell** (con root):
+
+   ```bash
+   aws ce list-cost-allocation-tags --type UserDefined
+   aws ce update-cost-allocation-tags-status --cost-allocation-tags-status \
+     TagKey=proyecto,Status=Active TagKey=componente,Status=Active TagKey=entorno,Status=Active
+   ```
 2. *(Opcional)* **Account → IAM user and role access to Billing information → Activate**,
    para poder consultar costos sin usar root.
 
@@ -381,12 +393,20 @@ invocaciones).
 **Cost Explorer** → *Group by*: **Tag → proyecto** (o **Service**). Los datos tardan unas
 24 h en aparecer.
 
-### 6. Limitar las imágenes guardadas en ECR (después del primer deploy)
+### 6. Etiquetar el repositorio de ECR y limitar sus imágenes (después del primer deploy)
 
 ```powershell
-# Nombre del repositorio que creó SAM
-aws ecr describe-repositories --profile stockify --query "repositories[].repositoryName"
+# Nombre y ARN del repositorio que creó SAM
+aws ecr describe-repositories --profile stockify `
+  --query "repositories[].[repositoryName,repositoryArn]" --output table
+
+# Etiquetas de costos (el repositorio es lo que más cobra del proyecto)
+aws ecr tag-resource --profile stockify --resource-arn ARN-DEL-REPO `
+  --tags Key=proyecto,Value=stockify Key=componente,Value=image-processor Key=entorno,Value=dev
 
 aws ecr put-lifecycle-policy --profile stockify --repository-name NOMBRE-DEL-REPO `
   --lifecycle-policy-text file://infra/ecr-lifecycle.json
 ```
+
+Si SAM vuelve a crear el repositorio (por ejemplo, al borrar la stack auxiliar
+`stockify-image-processor-…-CompanionStack`), repite este paso.
