@@ -113,24 +113,24 @@ las que use:
       "Sid": "TmpSubirYConsultarEstado",
       "Effect": "Allow",
       "Action": ["s3:PutObject", "s3:GetObject"],
-      "Resource": "arn:aws:s3:::stockify-media-storage-dev/tmp/*"
+      "Resource": "arn:aws:s3:::stockify-media-storage-dev-pre/tmp/*"
     },
     {
       "Sid": "CarpetasFinales",
       "Effect": "Allow",
       "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
       "Resource": [
-        "arn:aws:s3:::stockify-media-storage-dev/product-templates/*",
-        "arn:aws:s3:::stockify-media-storage-dev/product-variants/*",
-        "arn:aws:s3:::stockify-media-storage-dev/categories/*",
-        "arn:aws:s3:::stockify-media-storage-dev/users/*"
+        "arn:aws:s3:::stockify-media-storage-dev-pre/product-templates/*",
+        "arn:aws:s3:::stockify-media-storage-dev-pre/product-variants/*",
+        "arn:aws:s3:::stockify-media-storage-dev-pre/categories/*",
+        "arn:aws:s3:::stockify-media-storage-dev-pre/users/*"
       ]
     },
     {
       "Sid": "ListarParaRecibir404",
       "Effect": "Allow",
       "Action": "s3:ListBucket",
-      "Resource": "arn:aws:s3:::stockify-media-storage-dev"
+      "Resource": "arn:aws:s3:::stockify-media-storage-dev-pre"
     }
   ]
 }
@@ -138,7 +138,7 @@ las que use:
 
 Si más adelante el backend usa una carpeta nueva, hay que añadirla aquí; si no, S3
 responde `AccessDenied`. La alternativa más simple es un solo
-`arn:aws:s3:::stockify-media-storage-dev/*` en `CarpetasFinales`, que da acceso a todo el
+`arn:aws:s3:::stockify-media-storage-dev-pre/*` en `CarpetasFinales`, que da acceso a todo el
 bucket (incluido `tmp/`).
 
 Sus access keys van en el `.env` del backend (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
@@ -199,7 +199,7 @@ El `put` **reemplaza** lo que hubiera, por eso primero se lee.
 variable se pierde al cerrarla:
 
 ```powershell
-$BUCKET = "stockify-media-storage-dev"
+$BUCKET = "stockify-media-storage-dev-pre"
 ```
 
 **b) Ver la configuración actual:**
@@ -244,7 +244,7 @@ Los comandos de esta sección usan dos variables de PowerShell. Defínelas al ab
 terminal (se pierden al cerrarla):
 
 ```powershell
-$BUCKET = "stockify-media-storage-dev"
+$BUCKET = "stockify-media-storage-dev-pre"
 $FILE_NAME = "152149"        # nombre de una foto de samples\ sin la extensión .jpg
 ```
 

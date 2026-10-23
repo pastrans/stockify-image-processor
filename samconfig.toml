@@ -1,5 +1,10 @@
 version = 0.1
 
+# Un stack por ambiente, cada uno vigila su propio bucket:
+#   sam deploy                       -> dev (local)
+#   sam deploy --config-env staging  -> staging
+#   sam deploy --config-env prod     -> prod
+
 [default.global.parameters]
 stack_name = "stockify-image-processor"
 region = "us-east-1"          # misma región que el bucket
@@ -10,10 +15,36 @@ capabilities = "CAPABILITY_IAM"
 resolve_s3 = true
 resolve_image_repos = true    # SAM crea el repositorio ECR para la imagen
 confirm_changeset = true
-parameter_overrides = "BucketName=stockify-media-storage-dev"
+parameter_overrides = "BucketName=stockify-media-storage-dev-pre"
 # Etiquetas del stack: CloudFormation las propaga a la Lambda, su rol, la regla y los logs.
 # Activadas como "cost allocation tags" permiten ver el costo del proyecto en Cost Explorer.
 tags = "proyecto=stockify componente=image-processor entorno=dev"
 
 [default.local_invoke.parameters]
-parameter_overrides = "BucketName=stockify-media-storage-dev"
+parameter_overrides = "BucketName=stockify-media-storage-dev-pre"
+
+[staging.global.parameters]
+stack_name = "stockify-image-processor-staging"
+region = "us-east-1"
+profile = "stockify"
+
+[staging.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
+resolve_image_repos = true
+confirm_changeset = true
+parameter_overrides = "BucketName=stockify-media-storage-staging"
+tags = "proyecto=stockify componente=image-processor entorno=staging"
+
+[prod.global.parameters]
+stack_name = "stockify-image-processor-prod"
+region = "us-east-1"
+profile = "stockify"
+
+[prod.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
+resolve_image_repos = true
+confirm_changeset = true
+parameter_overrides = "BucketName=stockify-media-storage-prod"
+tags = "proyecto=stockify componente=image-processor entorno=prod"

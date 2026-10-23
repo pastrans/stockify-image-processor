@@ -6,10 +6,10 @@
   "account": "123456789012",
   "time": "2026-01-01T00:00:00Z",
   "region": "us-east-1",
-  "resources": ["arn:aws:s3:::stockify-media-storage-dev"],
+  "resources": ["arn:aws:s3:::stockify-media-storage-dev-pre"],
   "detail": {
     "version": "0",
-    "bucket": { "name": "stockify-media-storage-dev" },
+    "bucket": { "name": "stockify-media-storage-dev-pre" },
     "object": {
       "key": "tmp/prueba-local/original.jpg",
       "size": 0,
